@@ -107,18 +107,18 @@ export default function PageLayout(props: {
         <>
           <Navbar className="grid-area-a" barTitle={props.mobileBarTitle} onOpenMenu={() => setIsSideMenuOpen(true)} />
           <Drawer open={isSideMenuOpen} onClose={() => setIsSideMenuOpen(false)} onOpen={() => setIsSideMenuOpen(true)}>
-            {({ close }) => <SideMenu className="flex-container h-full" onClickCloseBtn={close} />}
+           
           </Drawer>
         </>
       ) : (
         <>
           <Navbar className="grid-area-a" />
-          <SideMenu className="flex-container grid-area-b" />
+       
         </>
       )}
       <main
         // always occupy scrollbar space
-        className="flex flex-col PageLayoutContent relative grid-area-c lmao rounded-tl-3xl mobile:rounded-none"
+        className="flex flex-col PageLayoutContent relative grid-area-c lmao rounded-t-3xl mobile:rounded-none"
         style={{
           overflowX: 'hidden',
           overflowY: 'scroll'
@@ -502,72 +502,6 @@ function MobileDropdownTitle({
   )
 }
 
-function SideMenu({ className, onClickCloseBtn }: { className?: string; onClickCloseBtn?(): void }) {
-  const { pathname } = useRouter()
-  const isMobile = useAppSettings((s) => s.isMobile)
-  const isInLocalhost = useAppSettings((s) => s.isInLocalhost)
-  const sideMenuRef = useRef<HTMLDivElement>(null)
-  const latestVersion = useAppVersion((s) => s.latest)
-  const currentVersion = useAppVersion((s) => s.currentVersion)
-  const inDev = useAppSettings((s) => s.inDev) // show dev logo
-
-  useEffect(() => {
-    if (!inClient) return
-    setCssVarible(
-      globalThis.document.documentElement,
-      '--side-menu-width',
-      sideMenuRef.current ? Math.min(sideMenuRef.current.clientWidth, sideMenuRef.current.clientHeight) : 0
-    )
-  }, [sideMenuRef])
-
-  return (
-    <>
-      <Col
-        domRef={sideMenuRef}
-        className={twMerge(
-          `h-full overflow-y-auto w-56 mobile:w-64 mobile:rounded-tr-2xl mobile:rounded-br-2xl`,
-          className
-        )}
-        style={{
-          background: isMobile
-            ? 'linear-gradient(242.18deg, rgba(57, 208, 216, 0.08) 68.05%, rgba(57, 208, 216, 0.02) 86.71%), #0C0926'
-            : undefined,
-          boxShadow: isMobile ? '8px 0px 48px rgba(171, 196, 255, 0.12)' : undefined
-        }}
-      >
-        {isMobile && (
-          <Row className="items-center justify-between p-6 mobile:p-4 mobile:pl-8">
-            <Link href="/">
-              <Image src="/logo/logo-with-text.svg" className={`mobile:scale-75 ${inDev ? 'hue-rotate-60' : ''}`} />
-            </Link>
-            <Icon
-              size={isMobile ? 'sm' : 'md'}
-              heroIconName="x"
-              className="text-[rgba(57,208,216,0.8)] clickable clickable-mask-offset-2"
-              onClick={onClickCloseBtn}
-            />
-          </Row>
-        )}
-        <Col className="grid grid-rows-[2fr,1fr,auto] flex-1 overflow-hidden">
-        
-
-          <Col className="overflow-scroll no-native-scrollbar">
-            <div className="mx-8 border-b border-[rgba(57,208,216,0.16)] my-2 mobile:my-1"></div>
-            <div className="flex-1 overflow-auto no-native-scrollbar mt-2">
-              <RpcConnectionPanelSidebarWidget />
-              <SettingSidebarWidget />
-            
-
-             
-            </div>
-          </Col>
-
-          
-        </Col>
-      </Col>
-    </>
-  )
-}
 
 function BlockTimeClock({ showSeconds, hideUTCBadge }: { showSeconds?: boolean; hideUTCBadge?: boolean }) {
   const chainTimeOffset = useConnection((s) => s.chainTimeOffset)
@@ -803,13 +737,7 @@ function CommunityPopover() {
   )
 }
 
-function RpcConnectionPanelSidebarWidget() {
-  return (
-    <PageLayoutPopoverDrawer renderPopoverContent={({ close }) => <RpcConnectionPanelPopover close={close} />}>
-      <RpcConnectionFace />
-    </PageLayoutPopoverDrawer>
-  )
-}
+
 
 function RpcConnectionFace() {
   const currentEndPoint = useConnection((s) => s.currentEndPoint)

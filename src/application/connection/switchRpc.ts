@@ -51,8 +51,7 @@ export async function switchRpc(customizedEndPoint: Endpoint) {
       // cancel loading status
       useConnection.setState({ isLoading: false, switchConnectionFailed: false })
 
-      const { logSuccess } = useNotification.getState()
-      logSuccess('RPC Switch Success ', `new rpc: ${newEndPoint.name}`)
+
 
       // record selection to senssionStorage
       setSessionItem(SESSION_STORAGE_USER_SELECTED_RPC, newEndPoint)
