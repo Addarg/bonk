@@ -454,7 +454,7 @@ function ConcentratedCard() {
             <div ref={swapElementBox1} className="relative">
               {coin1InputDisabled && <InputLocked />}
               <CoinInputBox
-                className="mb-4 py-2 mobile:py-1 px-3 mobile:px-2 border-1.5 border-[#abc4ff40]"
+                className="mb-4 py-2 mobile:py-1 px-3 mobile:px-2 border-1.5"
                 disabled={isApprovePanelShown}
                 disabledInput={!currentAmmPool || coin1InputDisabled}
                 noDisableStyle
