@@ -1,16 +1,17 @@
 import { createRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Fraction } from '@raydium-io/raydium-sdk'
-
+import AutoBox from '@/components/AutoBox'
 import Decimal from 'decimal.js'
 import { twMerge } from 'tailwind-merge'
-
+import CoinAvatar, { CoinAvatarProps } from '@/components/CoinAvatar'
+import Tooltip from '@/components/Tooltip'
 import { isHydratedConcentratedItemInfo } from '@/application/concentrated/is'
 import useAppSettings from '@/application/common/useAppSettings'
 import { calLowerUpper, getPriceBoundary, getTickPrice } from '@/application/concentrated/getNearistDataPoint'
 import txCreateConcentratedPosotion from '@/application/concentrated/txCreateConcentratedPosition'
 import { HydratedConcentratedInfo } from '@/application/concentrated/type'
-import useConcentrated, { PoolsConcentratedTabs, timeMap } from '@/application/concentrated/useConcentrated'
+import useConcentrated, { PoolsConcentratedTabs, timeMap, TimeBasis } from '@/application/concentrated/useConcentrated'
 import useConcentratedAmmSelector from '@/application/concentrated/useConcentratedAmmSelector'
 import useConcentratedAmountCalculator from '@/application/concentrated/useConcentratedAmountCalculator'
 import useConcentratedInitCoinFiller from '@/application/concentrated/useConcentratedInitCoinFiller'
@@ -57,9 +58,10 @@ import InputLocked from '@/pageComponents/Concentrated/InputLocked'
 import { useConcentratedTickAprCalc } from '@/pageComponents/Concentrated/useConcentratedAprCalc'
 import { calculateRatio } from '@/pageComponents/Concentrated/util'
 import { Numberish } from '@/types/constants'
-
+import { AddressItem } from '@/components/AddressItem'
 import AddLiquidityConfirmDialog from '../../pageComponents/Concentrated/AddLiquidityConfirmDialog'
 import Chart from '../../pageComponents/ConcentratedRangeChart/Chart'
+import '../../styles/utilities.css'
 import { Range } from '../../pageComponents/ConcentratedRangeChart/chartUtil'
 
 const { ContextProvider: ConcentratedUIContextProvider, useStore: useLiquidityContextStore } = createContextStore({
@@ -70,11 +72,11 @@ const { ContextProvider: ConcentratedUIContextProvider, useStore: useLiquidityCo
 })
 
 export default function Concentrated() {
-  const hydratedAmmPools = useConcentrated((s) => s.hydratedAmmPools)              
-  const requiredAmmPool = hydratedAmmPools.filter(obj => {return obj.idString === "GtKKKs3yaPdHbQd2aZS4SfWhy8zQ988BJGnKNndLxYsN"})
+  const hydratedAmmPools = useConcentrated((s) => s.hydratedAmmPools)
+  const requiredAmmPool = hydratedAmmPools.filter(obj => { return obj.idString === "GtKKKs3yaPdHbQd2aZS4SfWhy8zQ988BJGnKNndLxYsN" })
 
-  if(requiredAmmPool.length > 0){
-   
+  if (requiredAmmPool.length > 0) {
+
 
     useConcentrated.setState({
       coin1: requiredAmmPool[0].base,
@@ -104,7 +106,7 @@ function NavButtons() {
         '-mt-4 mobile:mt-0.5 mb-8 mobile:mb-2 sticky z-auto -top-4 mobile:top-0 mobile:-translate-y-2 mobile:bg-[#0f0b2f] mobile:hidden items-center justify-between'
       )}
     >
-     
+
     </Row>
   )
 }
@@ -127,7 +129,69 @@ function AsideNavButtons() {
     </Row>
   )
 }
+function CoinAvatarInfoItem({ info, className }: { info: HydratedConcentratedInfo | undefined; className?: string }) {
+  const isMobile = useAppSettings((s) => s.isMobile)
 
+  const lowLiquidityAlertText = `This pool has relatively low liquidity. Always check the quoted price and that the pool has sufficient liquidity before trading.`
+  const timeBasis = useConcentrated((s) => s.timeBasis)
+
+  return (
+
+    <AutoBox
+      is={isMobile ? 'Col' : 'Row'}
+      className={twMerge('clickable flex-wrap items-center mobile:items-start', className)}
+    >
+      <CoinAvatarPair
+        className="justify-self-center mr-2"
+        size={isMobile ? 'sm' : 'md'}
+        token1={info?.base}
+        token2={info?.quote}
+      />
+      <Row className="mobile:text-xs font-medium mobile:mt-px items-center flex-wrap gap-2">
+        <Col>
+          <Row className="items-center">
+            <div>{info?.name}</div>
+            <Tooltip>
+              <Icon iconClassName="ml-1" size="sm" heroIconName="information-circle" />
+              <Tooltip.Panel>
+                <div className="max-w-[300px] space-y-1.5">
+                  {[info?.base, info?.quote].map((token, idx) =>
+                    token ? (
+                      <Row key={idx} className="gap-2">
+                        <CoinAvatar size={'xs'} token={token} />
+                        <AddressItem
+                          className="grow"
+                          showDigitCount={5}
+                          addressType="token"
+                          canCopy
+                          canExternalLink
+                          textClassName="flex text-xs text-[#abc4ff] justify-start"
+                          iconClassName="text-[#abc4ff]"
+                        >
+                          {toPubString(token.mint)}
+                        </AddressItem>
+                      </Row>
+                    ) : null
+                  )}
+                </div>
+              </Tooltip.Panel>
+            </Tooltip>
+          </Row>
+          <div className="font-medium text-xs white">Fee {toPercentString(info?.tradeFeeRate)}</div>
+        </Col>
+        {/* Temprary don't */}
+        {/* {lt(toString(info?.tvl, { decimalLength: 'auto 0' }) ?? 0, 100000) && (
+          <Tooltip placement="right">
+            <Icon size="sm" heroIconName="question-mark-circle" className="cursor-help" />
+            <Tooltip.Panel>
+              <div className="max-w-[min(320px,80vw)]">{lowLiquidityAlertText}</div>
+            </Tooltip.Panel>
+          </Tooltip>
+        )} */}
+      </Row>
+    </AutoBox>
+  )
+}
 function ConcentratedEffects() {
   useConcentratedLiquidityUrlParser()
   useConcentratedAmmSelector()
@@ -230,10 +294,10 @@ function ConcentratedCard() {
     () =>
       currentAmmPool
         ? decimalToFraction(
-            isPairPoolDirectionEq
-              ? currentAmmPool.state.currentPrice
-              : new Decimal(1).div(currentAmmPool.state.currentPrice)
-          )
+          isPairPoolDirectionEq
+            ? currentAmmPool.state.currentPrice
+            : new Decimal(1).div(currentAmmPool.state.currentPrice)
+        )
         : undefined,
     [currentAmmPool?.state.currentPrice.toFixed(), focusSide]
   )
@@ -243,9 +307,9 @@ function ConcentratedCard() {
   const inputDisable =
     currentAmmPool && currentPrice && priceLower !== undefined && priceUpper !== undefined
       ? [
-          toBN(priceUpper || 0, decimals).lt(toBN(currentPrice || 0, decimals)),
-          toBN(priceLower || 0, decimals).gt(toBN(currentPrice || 0, decimals))
-        ]
+        toBN(priceUpper || 0, decimals).lt(toBN(currentPrice || 0, decimals)),
+        toBN(priceLower || 0, decimals).gt(toBN(currentPrice || 0, decimals))
+      ]
       : [false, false]
 
   if (!isFocus1) inputDisable.reverse()
@@ -395,8 +459,8 @@ function ConcentratedCard() {
       inRange: !inputDisable.some((disabled) => disabled),
       currentPrice: currentAmmPool
         ? decimalToFraction(
-            isCoin1Base ? currentAmmPool.state.currentPrice : new Decimal(1).div(currentAmmPool.state.currentPrice)
-          )
+          isCoin1Base ? currentAmmPool.state.currentPrice : new Decimal(1).div(currentAmmPool.state.currentPrice)
+        )
         : undefined,
       currentAmmPool: currentAmmPool
     })
@@ -413,256 +477,297 @@ function ConcentratedCard() {
     }),
     [points, boundaryData, currentAmmPool?.ammConfig.tradeFeeRate, isPairPoolDirectionEq]
   )
- 
-//console.log(toUsdVolume(currentAmmPool?.tvl, {decimalPlace: 0 }))
+
+  //console.log(toUsdVolume(currentAmmPool?.tvl, {decimalPlace: 0 }))
   const [gettedNFTAddress, setGettedNFTAddress] = useState<string>()
   return (
-    
-    <CyberpunkStyleCard
-      domRef={cardRef}
-      wrapperClassName="w-[min(912px,100%)] self-center "
-      className="p-6 mobile:py-5 mobile:px-3"
-    >
-      
-      <div className="absolute -left-8 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <AsideNavButtons />
-      </div>
-      <PairInfoTitle
-        coin1={coin1}
-        coin2={coin2}
-        fee={toPercentString(currentAmmPool?.tradeFeeRate, { exact: true })}
-        focusSide={focusSide}
-        onChangeFocus={(focusSide) => useConcentrated.setState({ focusSide })}
-      />
-   
-      <div className="flex flex-col sm:flex-row flex-gap-1 gap-3 mb-3">
-        <Col className="gap-5 bg-dark-blue rounded-xl flex flex-col w-full sm:w-1/2 px-3 py-4">
-          <div>
-            <div className="flex justify-between align-top mb-3">
-              <div className="text-base leading-[22px] text-secondary-title ">Deposit Amount</div>
-              <RefreshCircle
-                disabled={isConfirmOn}
-                refreshKey="clmm-pools"
-                freshFunction={() => {
-                  refreshTokenPrice()
-                  refreshConcentrated()
-                }}
-              />
-            </div>
+    <div className='lol'>
+      <div className="poolInfo">
 
-            {/* input twin */}
-            <div ref={swapElementBox1} className="relative">
-              {coin1InputDisabled && <InputLocked />}
-              <CoinInputBox
-                className="mb-4 py-2 mobile:py-1 px-3 mobile:px-2 border-1.5"
-                disabled={isApprovePanelShown}
-                disabledInput={!currentAmmPool || coin1InputDisabled}
-                noDisableStyle
-                componentRef={coinInputBox1ComponentRef}
-                value={currentAmmPool ? toString(coin1Amount) : undefined}
-                haveHalfButton
-                HTMLTitleTooltip={toPubString(coin1?.mint)}
-                topLeftLabel={
-                  coin1 ? `${toPubString(coin1.mint).slice(0, 5)}...${toPubString(coin1.mint).slice(-5)}` : undefined
-                }
-                haveCoinIcon
-                maxValue={
-                  coin1 && getBalance(coin1)
-                    ? toTokenAmount(coin1, mul(getBalance(coin1), 0.985), { alreadyDecimaled: true })
-                    : undefined
-                }
-                onPriceChange={updatePrice1}
-                disableTokenSelect
-                onUserInput={(amount) => {
-                  useConcentrated.setState({ coin1Amount: amount, userCursorSide: 'coin1' })
-                }}
-                onEnter={(input) => {
-                  if (!input) return
-                  if (!coin2) coinInputBox2ComponentRef.current?.selectToken?.()
-                  if (coin2 && coin2Amount) liquidityButtonComponentRef.current?.click?.()
-                }}
-                token={coin1}
-              />
-            </div>
-            <div ref={swapElementBox2} className="relative">
-              {coin2InputDisabled && <InputLocked />}
-              <CoinInputBox
-                className="py-2 mobile:py-1 px-3 mobile:px-2 border-1.5 border-[#abc4ff40]"
-                componentRef={coinInputBox2ComponentRef}
-                disabled={isApprovePanelShown}
-                disabledInput={!currentAmmPool || coin2InputDisabled}
-                noDisableStyle
-                value={currentAmmPool ? toString(coin2Amount) : undefined}
-                HTMLTitleTooltip={toPubString(coin2?.mint)}
-                topLeftLabel={
-                  coin2 ? `${toPubString(coin2.mint).slice(0, 5)}...${toPubString(coin2.mint).slice(-5)}` : undefined
-                }
-                haveHalfButton
-                haveCoinIcon
-                maxValue={
-                  coin2 && getBalance(coin2)
-                    ? toTokenAmount(coin2, mul(getBalance(coin2), 0.985), { alreadyDecimaled: true })
-                    : undefined
-                }
-                onPriceChange={updatePrice2}
-                disableTokenSelect
-                onEnter={(input) => {
-                  if (!input) return
-                  if (!coin1) coinInputBox1ComponentRef.current?.selectToken?.()
-                  if (coin1 && coin1Amount) liquidityButtonComponentRef.current?.click?.()
-                }}
-                onUserInput={(amount) => {
-                  useConcentrated.setState({ coin2Amount: amount, userCursorSide: 'coin2' })
-                }}
-                token={coin2}
-              />
-            </div>
-          </div>
-
-          <div className="border-1.5 border-[#abc4ff40]  rounded-xl px-3 py-4">
-            <div className="flex justify-between mb-4">
-              <span className="text-sm leading-[18px] text-secondary-title">Total Deposit</span>
-              <span className="text-lg leading-[18px]">
-                {Boolean(currentAmmPool) && (isMeaningfulNumber(coin1Amount) || isMeaningfulNumber(coin2Amount))
-                  ? toUsdVolume(totalDeposit)
-                  : '--'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm leading-[18px] text-secondary-title">Deposit Ratio</span>
-              <span className="text-lg flex leading-[18px]">
-                {currentAmmPool && <CoinAvatarPair size="sm" token1={coin1} token2={coin2} />}
-                {Boolean(currentAmmPool) && (isMeaningfulNumber(coin1Amount) || isMeaningfulNumber(coin2Amount))
-                  ? `${ratio1 ?? '--'}% / ${ratio2 ?? '--'}%`
-                  : '--'}
-              </span>
-            </div>
-          </div>
-
-          {coin1InputDisabled || coin2InputDisabled ? (
-            <FadeIn>
-              <div className="flex items-center p-3 bg-[#2C2B57] rounded-xl text-sm text-[#D6CC56]">
-                <Icon size="sm" className="mr-1.5" heroIconName="exclamation-circle" />
-                Your position will not trade or earn fees until price moves into your range.
-              </div>
-            </FadeIn>
-          ) : (
-            ''
-          )}
-
-          {/* supply button */}
-          <Button
-            className="frosted-glass-teal w-full mt-auto"
-            componentRef={liquidityButtonComponentRef}
-            isLoading={isApprovePanelShown}
-            validators={[
-              {
-                should: connected,
-                forceActive: true,
-                fallbackProps: {
-                  onClick: () => useAppSettings.setState({ isWalletSelectorShown: true }),
-                  children: 'Connect Wallet'
-                }
-              },
-              {
-                should: currentAmmPool,
-                fallbackProps: {
-                  children: 'Pool Not Found'
-                }
-              },
-              {
-                should: gt(sub(priceUpper, priceLower), div(currentPrice, 1000)),
-                fallbackProps: {
-                  children: 'Range too small'
-                }
-              },
-              {
-                should: coin1 && coin2,
-                fallbackProps: { children: 'Select a token' }
-              },
-              {
-                should: isMeaningfulNumber(coin1Amount) || isMeaningfulNumber(coin2Amount),
-                fallbackProps: { children: 'Enter an amount' }
-              },
-              {
-                should: haveEnoughCoin1,
-                fallbackProps: { children: `Insufficient ${coin1?.symbol ?? ''} balance` }
-              },
-              {
-                should: haveEnoughCoin2,
-                fallbackProps: { children: `Insufficient ${coin2?.symbol ?? ''} balance` }
-              }
-            ]}
-            onClick={() => {
-              handleClickCreatePool()
-            }}
-          >
-            Preview
-          </Button>
-          <RemainSOLAlert />
-        </Col>
-
-        <div
-          className={`relative bg-dark-blue min-h-[180px] rounded-xl w-full sm:w-1/2 px-3 py-4 ${
-            currentAmmPool ? '' : 'pointer-events-none select-none'
-          }`}
-        >
-          {!currentAmmPool && (
-            <div className="absolute inset-0 z-10 grid grid-child-center backdrop-blur-md text-[#abc4ff]">
-              {hydratedAmmPools.length ? 'Pool Not Found' : 'Loading...'}
-            </div>
-          )}
-          <Chart
-            poolFocusKey={poolFocusKey}
-            title={<div className="text-base leading-[22px] text-secondary-title mb-3">Set Price Range</div>}
-            ref={chartRef}
-            chartOptions={chartOptions}
-            currentPrice={currentPrice}
-            priceMin={priceRange[0]}
-            priceMax={priceRange[1]}
-            priceLabel={isFocus1 ? `${coin2?.symbol} per ${coin1?.symbol}` : `${coin1?.symbol} per ${coin2?.symbol}`}
-            timeBasis={timeBasis}
-            decimals={decimals}
-            onPositionChange={handlePosChange}
-            onInDecrease={handleClickInDecrease}
-            onAdjustMin={handleAdjustMin}
-            showZoom
-            height={200}
-          />
-          <ConcentratedCardAPRInfo />
-        </div>
-      </div>
-      <AddLiquidityConfirmDialog
-        open={isConfirmOn}
-        coin1={poolSnapShot.coin1}
-        coin2={poolSnapShot.coin2}
-        coin1Amount={poolSnapShot.coin1Amount}
-        coin2Amount={poolSnapShot.coin2Amount}
-        decimals={poolSnapShot.decimals}
-        position={chartRef.current?.getPosition()}
-        totalDeposit={poolSnapShot.totalDeposit ?? toUsdVolume(0)}
-        feeRate={poolSnapShot.feeRate}
-        inRange={poolSnapShot.inRange}
-        currentPrice={poolSnapShot.currentPrice}
-        gettedNFTAddress={gettedNFTAddress}
-        onConfirm={(close) =>
-          txCreateConcentratedPosotion({
-            currentAmmPool: poolSnapShot.currentAmmPool,
-            onSuccess({ nftAddress }) {
-              setGettedNFTAddress(nftAddress)
+        <CoinAvatarInfoItem info={currentAmmPool} className="pl-0 overflow-hidden zom" />
+        <div className="wrp">
+          <div className="lbl">Liquidity</div>
+          <TextInfoItem
+            name="Liquidity"
+            value={
+              isHydratedConcentratedItemInfo(currentAmmPool)
+                ? toUsdVolume(currentAmmPool?.tvl, { decimalPlace: 0 })
+                : undefined
             }
-          })
-        }
-        onBackToAllMyPools={() => {
-          refreshConcentrated()
-          routeTo('/clmm/pools', { queryProps: { currentTab: PoolsConcentratedTabs.MY_POOLS } })
-        }}
-        onClose={() => {
-          onConfirmClose()
-          setGettedNFTAddress(undefined)
-        }}
-      />
-    </CyberpunkStyleCard>
+          /></div>
+        <div className="wrp">
+          <div className="lbl">Volume 24h</div>
+          <TextInfoItem
+            name={`Volume(${timeBasis})`}
+            value={
+              isHydratedConcentratedItemInfo(currentAmmPool)
+                ? timeBasis === TimeBasis.DAY
+                  ? toUsdVolume(currentAmmPool.volume24h, { decimalPlace: 0 })
+                  : timeBasis === TimeBasis.WEEK
+                    ? toUsdVolume(currentAmmPool.volume7d, { decimalPlace: 0 })
+                    : toUsdVolume(currentAmmPool.volume30d, { decimalPlace: 0 })
+                : undefined
+            }
+          /></div>
+        <div className="wrp">
+        <div className="lbl">Fees 24h</div>
+          <TextInfoItem
+            name={`Fees(${timeBasis})`}
+            value={
+              isHydratedConcentratedItemInfo(currentAmmPool)
+                ? timeBasis === TimeBasis.DAY
+                  ? toUsdVolume(currentAmmPool.volumeFee24h, { decimalPlace: 0 })
+                  : timeBasis === TimeBasis.WEEK
+                    ? toUsdVolume(currentAmmPool.volumeFee7d, { decimalPlace: 0 })
+                    : toUsdVolume(currentAmmPool.volumeFee30d, { decimalPlace: 0 })
+                : undefined
+            }
+          /></div></div>
+      <CyberpunkStyleCard
+        domRef={cardRef}
+        wrapperClassName="w-[min(912px,100%)] self-center "
+        className="p-6 mobile:py-5 mobile:px-3"
+      >
+
+        <div className="absolute -left-8 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <AsideNavButtons />
+        </div>
+        <PairInfoTitle
+          coin1={coin1}
+          coin2={coin2}
+          fee={toPercentString(currentAmmPool?.tradeFeeRate, { exact: true })}
+          focusSide={focusSide}
+          onChangeFocus={(focusSide) => useConcentrated.setState({ focusSide })}
+        />
+
+        <div className="flex flex-col sm:flex-row flex-gap-1 gap-3 mb-3">
+          <Col className="gap-5 bg-dark-blue rounded-xl flex flex-col w-full sm:w-1/2 px-3 py-4">
+            <div>
+              <div className="flex justify-between align-top mb-3">
+                <div className="text-base leading-[22px] text-secondary-title ">Deposit Amount</div>
+                <RefreshCircle
+                  disabled={isConfirmOn}
+                  refreshKey="clmm-pools"
+                  freshFunction={() => {
+                    refreshTokenPrice()
+                    refreshConcentrated()
+                  }}
+                />
+              </div>
+
+              {/* input twin */}
+              <div ref={swapElementBox1} className="relative">
+                {coin1InputDisabled && <InputLocked />}
+                <CoinInputBox
+                  className="mb-4 py-2 mobile:py-1 px-3 mobile:px-2 border-1.5"
+                  disabled={isApprovePanelShown}
+                  disabledInput={!currentAmmPool || coin1InputDisabled}
+                  noDisableStyle
+                  componentRef={coinInputBox1ComponentRef}
+                  value={currentAmmPool ? toString(coin1Amount) : undefined}
+                  haveHalfButton
+                  HTMLTitleTooltip={toPubString(coin1?.mint)}
+                  topLeftLabel={
+                    coin1 ? `${toPubString(coin1.mint).slice(0, 5)}...${toPubString(coin1.mint).slice(-5)}` : undefined
+                  }
+                  haveCoinIcon
+                  maxValue={
+                    coin1 && getBalance(coin1)
+                      ? toTokenAmount(coin1, mul(getBalance(coin1), 0.985), { alreadyDecimaled: true })
+                      : undefined
+                  }
+                  onPriceChange={updatePrice1}
+                  disableTokenSelect
+                  onUserInput={(amount) => {
+                    useConcentrated.setState({ coin1Amount: amount, userCursorSide: 'coin1' })
+                  }}
+                  onEnter={(input) => {
+                    if (!input) return
+                    if (!coin2) coinInputBox2ComponentRef.current?.selectToken?.()
+                    if (coin2 && coin2Amount) liquidityButtonComponentRef.current?.click?.()
+                  }}
+                  token={coin1}
+                />
+              </div>
+              <div ref={swapElementBox2} className="relative">
+                {coin2InputDisabled && <InputLocked />}
+                <CoinInputBox
+                  className="py-2 mobile:py-1 px-3 mobile:px-2 border-1.5 border-[#abc4ff40]"
+                  componentRef={coinInputBox2ComponentRef}
+                  disabled={isApprovePanelShown}
+                  disabledInput={!currentAmmPool || coin2InputDisabled}
+                  noDisableStyle
+                  value={currentAmmPool ? toString(coin2Amount) : undefined}
+                  HTMLTitleTooltip={toPubString(coin2?.mint)}
+                  topLeftLabel={
+                    coin2 ? `${toPubString(coin2.mint).slice(0, 5)}...${toPubString(coin2.mint).slice(-5)}` : undefined
+                  }
+                  haveHalfButton
+                  haveCoinIcon
+                  maxValue={
+                    coin2 && getBalance(coin2)
+                      ? toTokenAmount(coin2, mul(getBalance(coin2), 0.985), { alreadyDecimaled: true })
+                      : undefined
+                  }
+                  onPriceChange={updatePrice2}
+                  disableTokenSelect
+                  onEnter={(input) => {
+                    if (!input) return
+                    if (!coin1) coinInputBox1ComponentRef.current?.selectToken?.()
+                    if (coin1 && coin1Amount) liquidityButtonComponentRef.current?.click?.()
+                  }}
+                  onUserInput={(amount) => {
+                    useConcentrated.setState({ coin2Amount: amount, userCursorSide: 'coin2' })
+                  }}
+                  token={coin2}
+                />
+              </div>
+            </div>
+
+            <div className="border-1.5 border-[#abc4ff40]  rounded-xl px-3 py-4">
+              <div className="flex justify-between mb-4">
+                <span className="text-sm leading-[18px] text-secondary-title">Total Deposit</span>
+                <span className="text-lg leading-[18px]">
+                  {Boolean(currentAmmPool) && (isMeaningfulNumber(coin1Amount) || isMeaningfulNumber(coin2Amount))
+                    ? toUsdVolume(totalDeposit)
+                    : '--'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm leading-[18px] text-secondary-title">Deposit Ratio</span>
+                <span className="text-lg flex leading-[18px]">
+                  {currentAmmPool && <CoinAvatarPair size="sm" token1={coin1} token2={coin2} />}
+                  {Boolean(currentAmmPool) && (isMeaningfulNumber(coin1Amount) || isMeaningfulNumber(coin2Amount))
+                    ? `${ratio1 ?? '--'}% / ${ratio2 ?? '--'}%`
+                    : '--'}
+                </span>
+              </div>
+            </div>
+
+            {coin1InputDisabled || coin2InputDisabled ? (
+              <FadeIn>
+                <div className="flex items-center p-3 bg-[#2C2B57] rounded-xl text-sm text-[#D6CC56]">
+                  <Icon size="sm" className="mr-1.5" heroIconName="exclamation-circle" />
+                  Your position will not trade or earn fees until price moves into your range.
+                </div>
+              </FadeIn>
+            ) : (
+              ''
+            )}
+
+            {/* supply button */}
+            <Button
+              className="frosted-glass-teal w-full mt-auto"
+              componentRef={liquidityButtonComponentRef}
+              isLoading={isApprovePanelShown}
+              validators={[
+                {
+                  should: connected,
+                  forceActive: true,
+                  fallbackProps: {
+                    onClick: () => useAppSettings.setState({ isWalletSelectorShown: true }),
+                    children: 'Connect Wallet'
+                  }
+                },
+                {
+                  should: currentAmmPool,
+                  fallbackProps: {
+                    children: 'Pool Not Found'
+                  }
+                },
+                {
+                  should: gt(sub(priceUpper, priceLower), div(currentPrice, 1000)),
+                  fallbackProps: {
+                    children: 'Range too small'
+                  }
+                },
+                {
+                  should: coin1 && coin2,
+                  fallbackProps: { children: 'Select a token' }
+                },
+                {
+                  should: isMeaningfulNumber(coin1Amount) || isMeaningfulNumber(coin2Amount),
+                  fallbackProps: { children: 'Enter an amount' }
+                },
+                {
+                  should: haveEnoughCoin1,
+                  fallbackProps: { children: `Insufficient ${coin1?.symbol ?? ''} balance` }
+                },
+                {
+                  should: haveEnoughCoin2,
+                  fallbackProps: { children: `Insufficient ${coin2?.symbol ?? ''} balance` }
+                }
+              ]}
+              onClick={() => {
+                handleClickCreatePool()
+              }}
+            >
+              Preview
+            </Button>
+            <RemainSOLAlert />
+          </Col>
+
+          <div
+            className={`relative bg-dark-blue min-h-[180px] rounded-xl w-full sm:w-1/2 px-3 py-4 ${currentAmmPool ? '' : 'pointer-events-none select-none'
+              }`}
+          >
+            {!currentAmmPool && (
+              <div className="absolute inset-0 z-10 grid grid-child-center backdrop-blur-md text-[#abc4ff]">
+                {hydratedAmmPools.length ? 'Pool Not Found' : 'Loading...'}
+              </div>
+            )}
+            <Chart
+              poolFocusKey={poolFocusKey}
+              title={<div className="text-base leading-[22px] text-secondary-title mb-3">Set Price Range</div>}
+              ref={chartRef}
+              chartOptions={chartOptions}
+              currentPrice={currentPrice}
+              priceMin={priceRange[0]}
+              priceMax={priceRange[1]}
+              priceLabel={isFocus1 ? `${coin2?.symbol} per ${coin1?.symbol}` : `${coin1?.symbol} per ${coin2?.symbol}`}
+              timeBasis={timeBasis}
+              decimals={decimals}
+              onPositionChange={handlePosChange}
+              onInDecrease={handleClickInDecrease}
+              onAdjustMin={handleAdjustMin}
+              showZoom
+              height={200}
+            />
+            <ConcentratedCardAPRInfo />
+          </div>
+        </div>
+        <AddLiquidityConfirmDialog
+          open={isConfirmOn}
+          coin1={poolSnapShot.coin1}
+          coin2={poolSnapShot.coin2}
+          coin1Amount={poolSnapShot.coin1Amount}
+          coin2Amount={poolSnapShot.coin2Amount}
+          decimals={poolSnapShot.decimals}
+          position={chartRef.current?.getPosition()}
+          totalDeposit={poolSnapShot.totalDeposit ?? toUsdVolume(0)}
+          feeRate={poolSnapShot.feeRate}
+          inRange={poolSnapShot.inRange}
+          currentPrice={poolSnapShot.currentPrice}
+          gettedNFTAddress={gettedNFTAddress}
+          onConfirm={(close) =>
+            txCreateConcentratedPosotion({
+              currentAmmPool: poolSnapShot.currentAmmPool,
+              onSuccess({ nftAddress }) {
+                setGettedNFTAddress(nftAddress)
+              }
+            })
+          }
+          onBackToAllMyPools={() => {
+            refreshConcentrated()
+            routeTo('/clmm/pools', { queryProps: { currentTab: PoolsConcentratedTabs.MY_POOLS } })
+          }}
+          onClose={() => {
+            onConfirmClose()
+            setGettedNFTAddress(undefined)
+          }}
+        />
+      </CyberpunkStyleCard>
+    </div>
   )
 }
 function TextInfoItem({ name, value, className }: { name: string; value?: any; className?: string }) {

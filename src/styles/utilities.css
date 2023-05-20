@@ -128,3 +128,39 @@
   border-radius: 10px;
   width: 60px;
 }
+.lol{
+  width: 100%;
+  display: flex;
+  align-content: center;
+  justify-content: center;
+  flex-direction: column;
+}
+
+.poolInfo{
+  display: flex;
+  align-items: center;
+  width: 63%;
+  background-color: #FC8E03;
+  margin-left: 18.5%;
+  padding-left: 1rem;
+  border: 3px solid #141041;
+  margin-bottom: 1rem;
+  border-radius: 20px;
+  padding-right: 1rem;
+  justify-content: space-around;
+  height: 90px;
+  color: white;
+}
+
+.zom{
+  zoom: 110%;
+  color: white !important;
+}
+
+.white{
+  color:white !important;
+}
+
+.lbl{
+  font-weight: 900;
+}
